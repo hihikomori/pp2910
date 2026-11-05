@@ -201,4 +201,59 @@ void th_pool_t::shutdown_now()
 }
 
 int main()
-{}
+{
+  th_pool_t pool(5);
+
+  for (size_t i = 0; i < 10; ++i) {
+    try {
+      pool.submit(task_t{});
+    } catch (const std::runtime_error &e) {
+      std::osyncstream(std::cout) << "submitting while stopped\n";
+      break;
+    } catch (...) {
+      std::osyncstream(std::cout) << "unknown error while submitting\n";
+      break;
+    }
+  }
+
+  pool.wait();
+  std::osyncstream(std::cout) << "all tasks completed\n";
+
+  pool.pause();
+  std::osyncstream(std::cout) << "pool paused\n";
+
+  for (size_t i = 0; i < 5; ++i) {
+    try {
+      pool.submit(task_t{});
+    } catch (const std::runtime_error &e) {
+      std::osyncstream(std::cout) << "submitting while stopped\n";
+      break;
+    } catch (...) {
+      std::osyncstream(std::cout) << "unknown error while submitting\n";
+      break;
+    }
+  }
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  pool.resume();
+  std::osyncstream(std::cout) << "pool resumed\n";
+
+  pool.wait();
+  std::osyncstream(std::cout) << "all tasks completed\n";
+
+  for (size_t i = 0; i < 10; ++i) {
+    try {
+      pool.submit(task_t{});
+    } catch (const std::runtime_error &e) {
+      std::osyncstream(std::cout) << "submitting while stopped\n";
+      break;
+    } catch (...) {
+      std::osyncstream(std::cout) << "unknown error while submitting\n";
+      break;
+    }
+  }
+
+  pool.shutdown_now();
+  std::osyncstream(std::cout) << "pool shutdown\n";
+}
