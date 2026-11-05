@@ -209,10 +209,10 @@ int main()
       pool.submit(task_t{});
     } catch (const std::runtime_error &e) {
       std::osyncstream(std::cout) << "submitting while stopped\n";
-      break;
+      return 1;
     } catch (...) {
       std::osyncstream(std::cout) << "unknown error while submitting\n";
-      break;
+      return 2;
     }
   }
 
@@ -227,10 +227,10 @@ int main()
       pool.submit(task_t{});
     } catch (const std::runtime_error &e) {
       std::osyncstream(std::cout) << "submitting while stopped\n";
-      break;
+      return 1;
     } catch (...) {
       std::osyncstream(std::cout) << "unknown error while submitting\n";
-      break;
+      return 2;
     }
   }
 
@@ -247,10 +247,10 @@ int main()
       pool.submit(task_t{});
     } catch (const std::runtime_error &e) {
       std::osyncstream(std::cout) << "submitting while stopped\n";
-      break;
+      return 1;
     } catch (...) {
       std::osyncstream(std::cout) << "unknown error while submitting\n";
-      break;
+      return 2;
     }
   }
 
