@@ -1,19 +1,20 @@
+#include <chrono>
 #include <condition_variable>
 #include <functional>
+#include <iostream>
 #include <mutex>
 #include <queue>
+#include <syncstream>
 #include <thread>
 #include <vector>
-#include <chrono>
-#include <iostream>
-#include <syncstream>
 
 struct task_t
 {
   void operator()();
 };
 
-void task_t::operator()() {
+void task_t::operator()()
+{
   using namespace std::chrono_literals;
   std::this_thread::sleep_for(200ms);
   std::osyncstream(std::cout) << "!\n";
@@ -38,7 +39,12 @@ private:
 void th_pool_t::submit(f_t f)
 {
   mx_.lock();
-  tasks_.push(std::move(f));
+  try {
+    tasks_.push(std::move(f));
+  } catch (...) {
+    mx_.unlock();
+    throw;
+  }
   mx_.unlock();
   cd_.notify_one();
 }
@@ -48,9 +54,23 @@ th_pool_t::th_pool_t(unsigned int k)
   auto thf = [this]() {
     execute();
   };
+  try {
+    for (; k; --k) {
+      ths_.emplace_back(thf);
+    }
+  } catch (...) {
+    mx_.lock();
+    stop_ = true;
+    mx_.unlock();
+    cd_.notify_all();
 
-  for (; k; --k) {
-    ths_.emplace_back(thf);
+    for (auto &th : ths_) {
+      if (th.joinable()) {
+        th.join();
+      }
+    }
+
+    throw;
   }
 }
 
@@ -70,15 +90,16 @@ th_pool_t::~th_pool_t()
 void th_pool_t::execute()
 {
   std::unique_lock lck(mx_);
-  do {
+
+  while (true) {
     auto proceed = [&]() {
       return !tasks_.empty() || stop_;
     };
 
     cd_.wait(lck, proceed);
 
-    if (tasks_.empty()){
-      continue;
+    if (stop_ && tasks_.empty()) {
+      break;
     }
 
     auto task = std::move(tasks_.front());
@@ -87,16 +108,17 @@ void th_pool_t::execute()
 
     try {
       task();
-    } catch (...) {}
+    } catch (...) {
+    }
 
     lck.lock();
-  } while (!stop_ || !tasks_.empty());
+  }
 }
 
 int main()
 {
   th_pool_t pool(5);
-  for (size_t i = 0; i < 10; ++i){
+  for (size_t i = 0; i < 10; ++i) {
     pool.submit(task_t{});
   }
 }
